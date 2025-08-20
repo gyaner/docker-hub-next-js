@@ -3,9 +3,9 @@ pipeline {
 
   environment {
     REPO_URL     = 'https://github.com/gyaner/next-js-hoisting'
-    DOCKER_IMAGE = 'gyandevloper/nextjs-app'   // 👈 Your Docker Hub repo
+    DOCKER_IMAGE = 'gyandevloper/nextjs-app'
     EC2_USER     = 'ubuntu'
-    EC2_HOST     = '43.204.25.229'
+    EC2_HOST     = '65.2.166.236'
     APP_DIR      = '/opt/nextjs-app'
   }
 
@@ -18,27 +18,27 @@ pipeline {
 
     stage('Build & Push Docker Image') {
       when {
-        branch 'main'    // ✅ Run only if branch == main
+        branch 'main'
       }
       steps {
         script {
-          echo "Building Docker image from Docker Hub base..."
-          sh """
-            # Pull base image from Docker Hub
-            docker pull node:18-alpine
+          withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'DOCKER_HUB_USER', passwordVariable: 'DOCKER_HUB_PASS')]) {
+            sh """
+              docker pull node:18-alpine
 
-            # Build new image for this commit
-            SHORT_COMMIT=\$(echo "$GIT_COMMIT" | cut -c1-7)
-            IMAGE_TAG="$DOCKER_IMAGE:\$SHORT_COMMIT"
+              SHORT_COMMIT=\$(echo "$GIT_COMMIT" | cut -c1-7)
+              IMAGE_TAG="$DOCKER_IMAGE:\$SHORT_COMMIT"
 
-            docker build -t "\$IMAGE_TAG" .
-            docker tag "\$IMAGE_TAG" "$DOCKER_IMAGE:latest"
+              docker build -t "\$IMAGE_TAG" .
+              docker tag "\$IMAGE_TAG" "$DOCKER_IMAGE:latest"
 
-            echo "Pushing image to Docker Hub..."
-            docker login -u "$DOCKER_HUB_USER" -p "$DOCKER_HUB_PASS"
-            docker push "\$IMAGE_TAG"
-            docker push "$DOCKER_IMAGE:latest"
-          """
+              echo "Logging in to Docker Hub..."
+              echo "\$DOCKER_HUB_PASS" | docker login -u "\$DOCKER_HUB_USER" --password-stdin
+
+              docker push "\$IMAGE_TAG"
+              docker push "$DOCKER_IMAGE:latest"
+            """
+          }
         }
       }
     }
